@@ -32,7 +32,7 @@ def test_parse_html_has_correct_format() -> None:
     assert len(data) == 1
     div_data = data[0]
     assert len(div_data) == 3
-    assert div_data == ("div", ["class-name"], "folder/file.html")
+    assert div_data == ("div", "class-name", "folder/file.html")
 
 def test_parse_html_sorts_class_names() -> None:
     html_str = \
@@ -43,7 +43,7 @@ def test_parse_html_sorts_class_names() -> None:
     div1_data = data[0]
     div2_data = data[1]
     
-    expected = ("div", ["align-center", "py-5", "w-auto"], "folder/file.html")
+    expected = ("div", "align-center py-5 w-auto", "folder/file.html")
     assert div1_data == expected
     assert div2_data == expected
 
@@ -55,9 +55,9 @@ def test_parse_html_works_on_nested_elements() -> None:
     data = parse_html(html_str, "folder/file.html")
     assert len(data) == 2 #should not include p
     
-    expected_outer = ("div", ["align-center", "py-5", "w-auto"], "folder/file.html")
+    expected_outer = ("div", "align-center py-5 w-auto", "folder/file.html")
     assert expected_outer in data
-    expected_inner = ("div", ["md:text-lg", "sm:text-sm"], "folder/file.html")
+    expected_inner = ("div", "md:text-lg sm:text-sm", "folder/file.html")
     assert expected_inner in data
 
 def test_parse_html_works_with_duplicate_classes() -> None:
@@ -68,7 +68,7 @@ def test_parse_html_works_with_duplicate_classes() -> None:
     data = parse_html(html_str, "folder/file.html")
     assert len(data) == 2 #should not include p
     
-    expected_outer = ("div", ["align-center", "py-5", "w-auto"], "folder/file.html")
+    expected_outer = ("div", "align-center py-5 w-auto", "folder/file.html")
     assert expected_outer in data
-    expected_inner = ("div", ["md:text-lg", "sm:text-sm"], "folder/file.html")
+    expected_inner = ("div", "md:text-lg sm:text-sm", "folder/file.html")
     assert expected_inner in data

@@ -2,6 +2,7 @@ import sys
 import os
 from bs4 import BeautifulSoup, Tag
 import sqlite3
+from sqlite3 import Connection
 
 from typing import List, Tuple, Any
 
@@ -30,17 +31,12 @@ def get_filepaths(path: str) -> List[str]:
         return filepaths
     
     raise FileNotFoundError(f"\'{path}\' is not a path to a file or directory.")
-    # if (os.path.isfile(path)):
-    #     with open(path, "r") as f:
-    #         content = f.read()
-    #         return [content]
-    # elif (os.path.isdir(path)):
 
-
-def parse_html(content: str, file_path: str) -> Any:
+def parse_html(content: str, file_path: str) -> List[Tuple[str, str, str]]:
     """
     Given a file_path and its content, return a 3-tuple for each tag in the file:
-    (tag_name, class_list (sorted), file_path)
+    (tag_name, class_strs, file_path), where class_strs is a alphabetically sorted,
+    space separated string of classes in the tag. 
     """
     soup = BeautifulSoup(content, "html.parser")
     all_elements = soup.find_all(["div"])
@@ -51,16 +47,27 @@ def parse_html(content: str, file_path: str) -> Any:
         name = tag.name
         classes = sorted(list(set(tag.attrs["class"])))
         classes.sort()
-        data.append((name, classes, file_path))
+        class_strs = " ".join(str(class_name) for class_name in classes)
+        data.append((name, class_strs, file_path))
 
     return data
 
-def parse_data(data: dict) -> None:
+def parse_data(data: List[Tuple[str, str, str]], conn: Connection) -> None:
     """
     Given a data representation of tag data, update the
     database to include that data
     """
-    pass    
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS tag_data (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            classes TEXT,
+            file_path TEXT
+        )
+    ''')
+
+    cursor.executemany("INSERT INTO tag_data (name, classes, file_path) VALUES(?, ?, ?)", data)
+    conn.commit()
 
 def aggregate_data() -> None:
     """
@@ -104,11 +111,12 @@ if __name__ == "__main__":
 
         data += parse_html(content, file_path)
 
-    # Set up sqlite3 db
-
+    # Set up sqlite3 db and add data
+    conn = sqlite3.connect("database.db")
+    parse_data(data, conn)
     # aggregate data from db
-
+    
 
     # aggregated data -> CSV output
 
-    pass
+    conn.close()
