@@ -3,7 +3,7 @@ import os
 from bs4 import BeautifulSoup, Tag
 import sqlite3
 from sqlite3 import Connection
-
+import csv
 from typing import List, Tuple, Any
 
 def get_filepaths(path: str) -> List[str]:
@@ -45,10 +45,16 @@ def parse_html(content: str, file_path: str) -> List[Tuple[str, str, str]]:
     data = []
     for tag in tags:
         name = tag.name
-        classes = sorted(list(set(tag.attrs["class"])))
+
+        class_attr = tag.attrs.get("class")
+        if class_attr is None:
+            continue
+        
+        classes = sorted(list(set(class_attr)))
         classes.sort()
+        num_classes = len(classes)
         class_strs = " ".join(str(class_name) for class_name in classes)
-        data.append((name, class_strs, file_path))
+        data.append((name, class_strs, num_classes, file_path))
 
     return data
 
@@ -58,31 +64,44 @@ def parse_data(data: List[Tuple[str, str, str]], conn: Connection) -> None:
     database to include that data
     """
     cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS tag_data (
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tag_data (
             id INTEGER PRIMARY KEY,
             name TEXT,
             classes TEXT,
+            num_classes INTEGER,
             file_path TEXT
         )
     ''')
 
-    cursor.executemany("INSERT INTO tag_data (name, classes, file_path) VALUES(?, ?, ?)", data)
+    cursor.executemany("INSERT INTO tag_data (name, classes, num_classes, file_path) VALUES(?, ?, ?, ?)", data)
     conn.commit()
 
-def aggregate_data() -> None:
+def analyze_db_info(conn: Connection, min_classes=1, min_instances=2) -> None:
     """
-    Given a sqlite3 database populated with tag data from
-    many files, aggregate the data to include, for each unique 
-    tag+class_set:
-    - The tag
-    - The set of classes
-    - The number of occurrences
-    - The locations where it occurs
-    """
-    pass
+    TODO: Fix this
+    # Given a connection to a populated database, return a list of repeated tags and classes,
+    # with each repeated tag being a 4-tuple of (name, classes, num_instances, file_paths),
+    # where num_instances is the number of tags with the same name and classes set, 
+    # and file_paths is the set of file_paths that include the tag. 
 
-def format_aggregated_data() -> None:
-    pass
+    # Only include tags with at least min_classes (default=1) classes that occur at least min_instances (default=2) times.  
+    """
+    cursor = conn.cursor()
+    cursor.execute(f'''
+        SELECT name, classes, COUNT(id) as num_instances, GROUP_CONCAT(file_path, ', ') as file_paths
+        FROM tag_data
+        WHERE num_classes >= {min_classes}
+        GROUP BY name, classes
+        HAVING num_instances >= {min_instances}
+        ORDER BY num_instances DESC
+    ''')
+    query_data = cursor.fetchall()
+    with open("table.csv", "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow([header[0] for header in cursor.description])
+        writer.writerows(query_data)
+
 if __name__ == "__main__":
 
     #parse command line arguments
@@ -114,9 +133,10 @@ if __name__ == "__main__":
     # Set up sqlite3 db and add data
     conn = sqlite3.connect("database.db")
     parse_data(data, conn)
-    # aggregate data from db
-    
 
-    # aggregated data -> CSV output
+    # analyze data in db and write to csv 
+    analyze_db_info(conn)
 
+    # Clean up
+    conn.cursor().execute("DROP TABLE tag_data")
     conn.close()
