@@ -1,12 +1,39 @@
 import sys
-from typing import List, Any
+import os
 
-def get_files(path: str) -> List[str]:
+from typing import List, Tuple, Any
+
+def get_filepaths(path: str) -> List[str]:
     """
-    Given a directory path, return a list of all
-    *.html filepaths in the directory
+    path: a path to a file or directory
+
+    returns: a list of filepaths to all .html files in the directory,
+             or a list of a single filepath if path is to a file.
+             If the path is invalid, raise an error
     """
-    return ["hi"]
+
+    if (os.path.isfile(path)):
+        return [path]
+    elif (os.path.isdir(path)):
+        directories = os.walk(path)
+        filepaths = []
+        for dirpath, dirnames, filenames in directories:
+            for filename in filenames:
+                if filename.endswith(".html"):
+                    filepath = os.path.join(dirpath,filename)
+                    filepaths.append(filepath)
+        if (not filepaths):
+            print("no .html files to analyze in the given directory.")
+            sys.exit(0)
+        return filepaths
+    
+    raise FileNotFoundError(f"\'{path}\' is not a path to a file or directory.")
+    # if (os.path.isfile(path)):
+    #     with open(path, "r") as f:
+    #         content = f.read()
+    #         return [content]
+    # elif (os.path.isdir(path)):
+
 
 #TODO: strengthen spec
 def parse_html(file_path: str) -> Any:
@@ -39,9 +66,15 @@ def aggregate_data() -> None:
 def format_aggregated_data() -> None:
     pass
 if __name__ == "__main__":
-
+    args = sys.argv
+    if len(args) != 2:
+        print("Error: please provide a filepath or directory to analyze as a command-line argument.")
+        sys.exit(1)
+    path = args[1]
+    
     #parse command line arguments
-
+    files = get_filepaths(path)
+    print("h1")
     #generate list of files
 
     #for each file:
