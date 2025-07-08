@@ -1,6 +1,7 @@
 import sys
 import os
 from bs4 import BeautifulSoup, Tag
+import sqlite3
 
 from typing import List, Tuple, Any
 
@@ -48,9 +49,8 @@ def parse_html(content: str, file_path: str) -> Any:
     data = []
     for tag in tags:
         name = tag.name
-        classes = sorted(tag.attrs["class"])
+        classes = sorted(list(set(tag.attrs["class"])))
         classes.sort()
-        
         data.append((name, classes, file_path))
 
     return data
@@ -60,7 +60,7 @@ def parse_data(data: dict) -> None:
     Given a data representation of tag data, update the
     database to include that data
     """
-    pass
+    pass    
 
 def aggregate_data() -> None:
     """
@@ -104,7 +104,10 @@ if __name__ == "__main__":
 
         data += parse_html(content, file_path)
 
+    # Set up sqlite3 db
+
     # aggregate data from db
+
 
     # aggregated data -> CSV output
 

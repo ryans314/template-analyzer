@@ -59,3 +59,16 @@ def test_parse_html_works_on_nested_elements() -> None:
     assert expected_outer in data
     expected_inner = ("div", ["md:text-lg", "sm:text-sm"], "folder/file.html")
     assert expected_inner in data
+
+def test_parse_html_works_with_duplicate_classes() -> None:
+    html_str = \
+    "<div class='align-center w-auto py-5'>" \
+        "<div class=\"sm:text-sm sm:text-sm md:text-lg\"><p></p></div>" \
+    "</div>"
+    data = parse_html(html_str, "folder/file.html")
+    assert len(data) == 2 #should not include p
+    
+    expected_outer = ("div", ["align-center", "py-5", "w-auto"], "folder/file.html")
+    assert expected_outer in data
+    expected_inner = ("div", ["md:text-lg", "sm:text-sm"], "folder/file.html")
+    assert expected_inner in data
