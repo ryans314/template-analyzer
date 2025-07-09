@@ -7,7 +7,7 @@ A tool to help identify repetitive html by counting the occurrences of each tag 
 2. To install the dependencies, run ```pip install -r requirements.txt```
 
 ## Usage
-```python analyze.py <analysis-path> [-o <output-file> | --output <output-file>] [-mc <value> | --min-classes <value>] [-mo <value> | --min-occurrences <value>] [-s | --short]```
+```python analyze.py <analysis-path> [-o <output-file> | --output <output-file>] [-mc <value> | --min-classes <value>] [-mo <value> | --min-occurrences <value>] [-ml <value> | --min-locations <value>] [-s | --short] ```
 
 * ```<analysis-path>``` is the path to a directory or file to analyze
 
@@ -15,6 +15,7 @@ A tool to help identify repetitive html by counting the occurrences of each tag 
 * ```--output <output-file>``` specifies the path/name that will be used for the output file. Defaults to template_analysis.csv
 * ```--min-classes <value>``` specifies the minimum number of classes that tags must have to be included. Defaults to 1.
 * ```--min-occurrences <value>``` specifies the minimum number of occurrences that tags+classes must have to be included. Defaults to 2.
+* ```--min-occurrences <value>``` specifies the minimum number of unique file locations that tags+classes must have to be included. Defaults to 1.
 * ```--short``` displays only the names of files where the tag+class was found, rather than file paths
 
 ### Examples

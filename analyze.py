@@ -82,7 +82,7 @@ def parse_data(data: List[TagEntry], conn: Connection) -> None:
     conn.commit()
     cursor.close()
 
-def analyze_db_info(conn: Connection, csv_path="template_analysis.csv", min_classes=1, min_instances=2) -> None:
+def analyze_db_info(conn: Connection, csv_path="template_analysis.csv", min_classes=1, min_instances=2, min_locations=1) -> None:
     """
     Given a connection to a populated database, analyze the tag data in the database and
     create a csv file with (name, num_occurrences, classes, file_paths) for each unique
@@ -92,11 +92,11 @@ def analyze_db_info(conn: Connection, csv_path="template_analysis.csv", min_clas
     """
     cursor = conn.cursor()
     cursor.execute(f'''
-        SELECT name, COUNT(id) as num_instances, classes, GROUP_CONCAT(DISTINCT file_path) as file_paths
+        SELECT name, COUNT(id) as num_instances, classes, GROUP_CONCAT(DISTINCT file_path ORDER BY file_path) as file_paths
         FROM tag_data
-        WHERE num_classes >= {min_classes}
+        WHERE num_classes >= {min_classes} 
         GROUP BY name, classes
-        HAVING num_instances >= {min_instances}
+        HAVING num_instances >= {min_instances} AND COUNT(DISTINCT file_path) >= {min_locations}
         ORDER BY num_instances DESC
     ''')
     query_data = cursor.fetchall()
@@ -122,6 +122,7 @@ def parse_args(args: List) -> List:
     output_file = "template_analysis.csv"
     min_classes = 1
     min_occurrences = 2
+    min_locations = 1
     is_short = False
 
     i = 1
@@ -146,6 +147,12 @@ def parse_args(args: List) -> List:
             except ValueError:
                 raise ValueError(f"Error: {args[i+1]} is not an integer")
             i += 1
+        elif arg in ["-ml", "--min-locations"]:
+            try:
+                min_locations = int(args[i+1])
+            except ValueError:
+                raise ValueError(f"Error: {args[i+1]} is not an integer")
+            i += 1
         elif arg.startswith("-"):
             raise ValueError(f"Error: {arg} is not a recognized option")
         elif analysis_dir is None:
@@ -157,14 +164,14 @@ def parse_args(args: List) -> List:
     if analysis_dir is None:
         raise ValueError("Error: no target file or directory specified")
     
-    return [analysis_dir, output_file, min_classes, min_occurrences, is_short]
+    return [analysis_dir, output_file, min_classes, min_occurrences, min_locations, is_short]
 
 
 if __name__ == "__main__":
 
     #parse command line arguments
     try:
-        analysis_dir, output_file, min_classes, min_occurrences, is_short = parse_args(sys.argv)
+        analysis_dir, output_file, min_classes, min_occurrences, min_locations, is_short = parse_args(sys.argv)
     except ValueError as e:
         print(e)
         sys.exit(1)
@@ -199,7 +206,7 @@ if __name__ == "__main__":
     parse_data(data, conn)
 
     # analyze data in db and write to csv 
-    analyze_db_info(conn, output_file, min_classes, min_occurrences)
+    analyze_db_info(conn, output_file, min_classes, min_occurrences, min_locations)
     print(f"Output file created at: {output_file}")
 
     # Clean up

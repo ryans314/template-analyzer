@@ -12,26 +12,32 @@ def test_parse_args_works_for_minimal_args() -> None:
     expected_output = "template_analysis.csv"
     expected_classes = 1
     expected_occurrences = 2
+    expected_locations = 1
     expected_is_short = False
-    assert [expected_analysis, expected_output, expected_classes, expected_occurrences, expected_is_short] == parse_args(args)
+    
+    assert [expected_analysis, expected_output, expected_classes, expected_occurrences, expected_locations, expected_is_short] == parse_args(args)
 
 def test_parse_args_works_for_all_args() -> None:
-    args = ["analyze.py", "directory/templates", "-o", "output.csv", "-mo", "18", "-mc", "0", "-s"]
+    args = ["analyze.py", "directory/templates", "-o", "output.csv", "-mo", "18", "-mc", "0", "-s", "-ml", "4"]
     expected_analysis = "directory/templates"
     expected_output = "output.csv"
     expected_classes = 0
     expected_occurrences = 18
+    expected_locations = 4
     expected_is_short = True
-    assert [expected_analysis, expected_output, expected_classes, expected_occurrences, expected_is_short] == parse_args(args)
+    
+    assert [expected_analysis, expected_output, expected_classes, expected_occurrences, expected_locations, expected_is_short] == parse_args(args)
 
 def test_parse_args_works_for_verbose_options() -> None:
-    args = ["analyze.py", "directory/templates/template.html", "--output", "output.csv", "--min-occurrences", "18", "--min-classes", "0", "--short"]
+    args = ["analyze.py", "directory/templates/template.html", "--output", "output.csv", "--min-occurrences", "18", "--min-classes", "0", "--short", "--min-locations", "3"]
     expected_analysis = "directory/templates/template.html"
     expected_output = "output.csv"
     expected_classes = 0
-    expected_is_short = True
     expected_occurrences = 18
-    assert [expected_analysis, expected_output, expected_classes, expected_occurrences, expected_is_short] == parse_args(args)
+    expected_locations = 3
+    expected_is_short = True
+    
+    assert [expected_analysis, expected_output, expected_classes, expected_occurrences, expected_locations, expected_is_short] == parse_args(args)
 
 
 
@@ -225,6 +231,41 @@ def test_analyze_db_info_sorts_and_filters_correctly() -> None:
     assert table_data == expected_data
     os.remove("template_analysis.csv")
 
+def test_analyze_db_info_filters_locations_correctly() -> None:
+    data = [
+        ("div", "flex flex-col", 2, "_table.html"),
+        ("div", "flex flex-col", 2, "_table.html"),
+        ("div", "flex flex-col", 2, "index.html"),
+        ("div", "flex flex-col", 2, "detail.html"),
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/fake_path.html"),
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/diff_path.html"),
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/diff_path.html"),
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto min-w-8", 7, "test_data/diff_path.html"), #exclude single occurrences
+    ]
+    conn = sqlite3.connect(":memory:")
+    parse_data(data, conn)
+    analyze_db_info(conn, min_locations=3)
+    conn.close()
+
+    with open("template_analysis.csv", "r", newline='') as file:
+        reader = csv.reader(file)
+        headers = next(reader)
+        
+        table_data = []
+        for row in reader:
+            no_paths = row[:3]
+            paths = row[3]
+            paths_set = set(paths.split(","))
+            table_data.append((no_paths, paths_set))
+    
+    expected_data = [
+        (["div", "4", "flex flex-col"], {"_table.html", "index.html", "detail.html"}),
+    ]
+
+    assert table_data == expected_data
+    os.remove("template_analysis.csv")
+
+
 
 def test_analyze_db_info_creates_new_directories() -> None:
     data = []
@@ -277,4 +318,26 @@ def test_analyze_db_info_works_with_set_occurrences_and_classes() -> None:
     ]
 
     assert table_data == expected_data
+    os.remove("template_analysis.csv")
+
+def test_analyze_db_info_orders_filenames_alphabetically() -> None:
+    data = [
+        ("div", "flex flex-col", 2, "_table.html"),
+        ("div", "flex flex-col", 2, "_index_table.html"),
+        ("div", "flex flex-col", 2, "index.html"),
+        ("div", "flex flex-col", 2, "detail.html"),
+    ]
+    conn = sqlite3.connect(":memory:")
+    parse_data(data, conn)
+    analyze_db_info(conn)
+    conn.close()
+
+    with open("template_analysis.csv", "r", newline='') as file:
+        reader = csv.reader(file)
+        headers = next(reader)
+        
+        row = next(reader)
+    
+    assert row == ["div", "4", "flex flex-col", "_index_table.html,_table.html,detail.html,index.html"]
+    
     os.remove("template_analysis.csv")
