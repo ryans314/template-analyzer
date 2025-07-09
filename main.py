@@ -6,6 +6,8 @@ from sqlite3 import Connection
 import csv
 from typing import List, Tuple, Any
 
+type TagEntry = tuple[str, str, int, str]
+
 def get_filepaths(path: str) -> List[str]:
     """
     path: a path to a file or directory
@@ -32,7 +34,7 @@ def get_filepaths(path: str) -> List[str]:
     
     raise FileNotFoundError(f"\'{path}\' is not a path to a file or directory.")
 
-def parse_html(content: str, file_path: str) -> List[Tuple[str, str, str]]:
+def parse_html(content: str, file_path: str) -> List[TagEntry]:
     """
     Given a file_path and its content, return a 3-tuple for each tag in the file:
     (tag_name, class_strs, file_path), where class_strs is a alphabetically sorted,
@@ -58,7 +60,7 @@ def parse_html(content: str, file_path: str) -> List[Tuple[str, str, str]]:
 
     return data
 
-def parse_data(data: List[Tuple[str, str, str]], conn: Connection) -> None:
+def parse_data(data: List[TagEntry], conn: Connection) -> None:
     """
     Given a data representation of tag data, update the
     database to include that data
@@ -76,20 +78,20 @@ def parse_data(data: List[Tuple[str, str, str]], conn: Connection) -> None:
 
     cursor.executemany("INSERT INTO tag_data (name, classes, num_classes, file_path) VALUES(?, ?, ?, ?)", data)
     conn.commit()
+    cursor.close()
 
 def analyze_db_info(conn: Connection, min_classes=1, min_instances=2) -> None:
     """
     TODO: Fix this
-    # Given a connection to a populated database, return a list of repeated tags and classes,
-    # with each repeated tag being a 4-tuple of (name, classes, num_instances, file_paths),
-    # where num_instances is the number of tags with the same name and classes set, 
-    # and file_paths is the set of file_paths that include the tag. 
-
-    # Only include tags with at least min_classes (default=1) classes that occur at least min_instances (default=2) times.  
+    Given a connection to a populated database, return a list of repeated tags and classes,
+    with each repeated tag being a 4-tuple of (name, classes, num_instances, file_paths),
+    where num_instances is the number of tags with the same name and classes set, 
+    and file_paths is the set of file_paths that include the tag. 
+    Only include tags with at least min_classes (default=1) classes that occur at least min_instances (default=2) times.  
     """
     cursor = conn.cursor()
     cursor.execute(f'''
-        SELECT name, classes, COUNT(id) as num_instances, GROUP_CONCAT(file_path, ', ') as file_paths
+        SELECT name, COUNT(id) as num_instances, classes, GROUP_CONCAT(file_path, ', ') as file_paths
         FROM tag_data
         WHERE num_classes >= {min_classes}
         GROUP BY name, classes
