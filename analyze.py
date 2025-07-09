@@ -112,14 +112,9 @@ def analyze_db_info(conn: Connection, csv_path="template_analysis.csv", min_clas
         writer.writerow([header[0] for header in cursor.description])
         writer.writerows(query_data)
 
-if __name__ == "__main__":
-
-    #parse command line arguments
-    args = sys.argv
+def parse_args(args: List) -> List:
     if (len(args) == 1):
-        print("Error: please provide a file path or directory to analyze as a command-line argument.")
-        sys.exit(1)
-
+        raise ValueError("Error: please provide a file path or directory to analyze as a command-line argument.")
 
     analysis_dir = None
     # Default values
@@ -131,8 +126,7 @@ if __name__ == "__main__":
     while i < len(args):
         arg = args[i]
         if arg.startswith("-") and i + 1  >= len(args):
-            print(f"Error: {arg} requires an additional argument")
-            sys.exit(1)
+            raise ValueError(f"Error: {arg} requires an additional argument")
         if arg in ["-o", "--output"]:
             output_file = args[i+1]
             i += 1
@@ -140,31 +134,42 @@ if __name__ == "__main__":
             try:
                 min_classes = int(args[i+1])
             except ValueError:
-                print(f"Error: {args[i+1]} is not an integer")
-                sys.exit(1)
+                raise ValueError(f"Error: {args[i+1]} is not an integer")
             i += 1
         elif arg in ["-mo", "--min-occurrences"]:
             try:
                 min_occurrences = int(args[i+1])
             except ValueError:
-                print(f"Error: {args[i+1]} is not an integer")
-                sys.exit(1)
+                raise ValueError(f"Error: {args[i+1]} is not an integer")
             i += 1
         elif arg.startswith("-"):
-            print(f"Error: {arg} is not a recognized option")
-            sys.exit(1)
+            raise ValueError(f"Error: {arg} is not a recognized option")
         elif analysis_dir is None:
             analysis_dir = arg
         else:
-            print(f"Error: too many arguments")
-            sys.exit(1)
+            raise ValueError(f"Error: too many arguments")
         i += 1
     
     if analysis_dir is None:
-        print("Error: no target file or directory specified")
+        raise ValueError("Error: no target file or directory specified")
+    
+    return [analysis_dir, output_file, min_classes, min_occurrences]
+
+
+if __name__ == "__main__":
+
+    #parse command line arguments
+    try:
+        analysis_dir, output_file, min_classes, min_occurrences = parse_args(sys.argv)
+    except ValueError as e:
+        print(e)
         sys.exit(1)
             
-    file_paths = get_filepaths(analysis_dir)
+    try:
+        file_paths = get_filepaths(analysis_dir)
+    except FileNotFoundError:
+        print(f"Error: {analysis_dir} is not a path to a file or directory.")
+        sys.exit(1)
 
     data = []
     for file_path in file_paths:

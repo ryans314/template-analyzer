@@ -3,7 +3,34 @@ import sqlite3
 import csv
 import os
 from pytest import raises
-from analyze import get_filepaths, parse_html, parse_data, analyze_db_info
+from analyze import parse_args, get_filepaths, parse_html, parse_data, analyze_db_info
+
+#  ------------ Tests for parse_args -------------
+def test_parse_args_works_for_minimal_args() -> None:
+    args = ["analyze.py", "template.html"]
+    expected_analysis = "template.html"
+    expected_output = "template_analysis.csv"
+    expected_classes = 1
+    expected_occurrences = 2
+    assert [expected_analysis, expected_output, expected_classes, expected_occurrences] == parse_args(args)
+
+def test_parse_args_works_for_all_args() -> None:
+    args = ["analyze.py", "directory/templates", "-o", "output.csv", "-mo", "18", "-mc", "0"]
+    expected_analysis = "directory/templates"
+    expected_output = "output.csv"
+    expected_classes = 0
+    expected_occurrences = 18
+    assert [expected_analysis, expected_output, expected_classes, expected_occurrences] == parse_args(args)
+
+def test_parse_args_works_for_verbose_options() -> None:
+    args = ["analyze.py", "directory/templates/template.html", "--output", "output.csv", "--min-occurrences", "18", "--min-classes", "0"]
+    expected_analysis = "directory/templates/template.html"
+    expected_output = "output.csv"
+    expected_classes = 0
+    expected_occurrences = 18
+    assert [expected_analysis, expected_output, expected_classes, expected_occurrences] == parse_args(args)
+
+
 
 #  ------------ Tests for get_filepath -------------
 def test_get_filepaths_works_for_dir() -> None:
