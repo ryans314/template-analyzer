@@ -9,7 +9,6 @@ A tool to help identify repetitive html by counting the occurrences of each tag 
 ## Usage
 ```python analyze.py <analysis-path> [-o <output-file> | --output <output-file>]```
 
-*```<analysis-path>``` is the path to a directory or file to analyze
-
-*```<output-file>``` is the path/name that will be used for the output file.
+* ```<analysis-path>``` is the path to a directory or file to analyze
+* ```<output-file>``` is the path/name that will be used for the output file.
 
