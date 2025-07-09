@@ -120,17 +120,39 @@ if __name__ == "__main__":
         print("Error: please provide a file path or directory to analyze as a command-line argument.")
         sys.exit(1)
 
+
     analysis_dir = None
-    output_file = None
+    # Default values
+    output_file = "template_analysis.csv"
+    min_classes = 1
+    min_occurrences = 2
+
     i = 1
     while i < len(args):
         arg = args[i]
+        if arg.startswith("-") and i + 1  >= len(args):
+            print(f"Error: {arg} requires an additional argument")
+            sys.exit(1)
         if arg in ["-o", "--output"]:
-            if i + 1 >= len(args):
-                print(f"Error: {arg} requires an output file or directory")
-                sys.exit(1)
             output_file = args[i+1]
             i += 1
+        elif arg in ["-mc", "--min-classes"]:
+            try:
+                min_classes = int(args[i+1])
+            except ValueError:
+                print(f"Error: {args[i+1]} is not an integer")
+                sys.exit(1)
+            i += 1
+        elif arg in ["-mo", "--min-occurrences"]:
+            try:
+                min_occurrences = int(args[i+1])
+            except ValueError:
+                print(f"Error: {args[i+1]} is not an integer")
+                sys.exit(1)
+            i += 1
+        elif arg.startswith("-"):
+            print(f"Error: {arg} is not a recognized option")
+            sys.exit(1)
         elif analysis_dir is None:
             analysis_dir = arg
         else:
@@ -166,11 +188,8 @@ if __name__ == "__main__":
     parse_data(data, conn)
 
     # analyze data in db and write to csv 
-    if output_file:
-        analyze_db_info(conn, output_file)
-    else:
-        analyze_db_info(conn)
-        
+    analyze_db_info(conn, output_file, min_classes, min_occurrences)
+    print(f"Output file created at: {output_file}")
 
     # Clean up
     conn.cursor().execute("DROP TABLE tag_data")

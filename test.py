@@ -209,3 +209,42 @@ def test_analyze_db_info_creates_new_directories() -> None:
     os.rmdir("analysis/subdir")
     os.rmdir("analysis")
 
+def test_analyze_db_info_works_with_set_occurrences_and_classes() -> None:
+    data = [
+        ("div", "flex", 1, "_table.html"),
+        ("div", "", 0, "demo.html"),
+        ("div", "", 0, "demo.html"),
+        ("div", "", 0, "demo.html"),
+        ("div", "flex", 1, "_table.html"),
+        ("div", "flex flex-col", 2, "_table.html"),
+        ("div", "flex flex-col", 2, "_table.html"),
+        ("div", "flex flex-col", 2, "index.html"),
+        ("div", "flex flex-col", 2, "detail.html"),
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto min-w-8", 7, "test_data/diff_path.html"),
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/fake_path.html"),
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/diff_path.html"),
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/diff_path.html"),
+    ]
+    conn = sqlite3.connect(":memory:")
+    parse_data(data, conn)
+    analyze_db_info(conn, min_classes=6, min_instances=1)
+    conn.close()
+
+    with open("template_analysis.csv", "r", newline='') as file:
+        reader = csv.reader(file)
+        headers = next(reader)
+        
+        table_data = []
+        for row in reader:
+            no_paths = row[:3]
+            paths = row[3]
+            paths_set = set(paths.split(","))
+            table_data.append((no_paths, paths_set))
+    
+    expected_data = [
+        (["div", "3", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto"], {"test_data/fake_path.html", "test_data/diff_path.html"}),
+        (["div", "1", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto min-w-8"], {"test_data/diff_path.html"})
+    ]
+
+    assert table_data == expected_data
+    os.remove("template_analysis.csv")
