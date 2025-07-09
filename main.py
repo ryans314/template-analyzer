@@ -1,5 +1,6 @@
 import sys
 import os
+from pathlib import Path
 from bs4 import BeautifulSoup, Tag
 import sqlite3
 from sqlite3 import Connection
@@ -80,18 +81,17 @@ def parse_data(data: List[TagEntry], conn: Connection) -> None:
     conn.commit()
     cursor.close()
 
-def analyze_db_info(conn: Connection, min_classes=1, min_instances=2) -> None:
+def analyze_db_info(conn: Connection, csv_path="template_analysis.csv", min_classes=1, min_instances=2) -> None:
     """
-    TODO: Fix this
-    Given a connection to a populated database, return a list of repeated tags and classes,
-    with each repeated tag being a 4-tuple of (name, classes, num_instances, file_paths),
-    where num_instances is the number of tags with the same name and classes set, 
-    and file_paths is the set of file_paths that include the tag. 
+    Given a connection to a populated database, analyze the tag data in the database and
+    create a csv file with (name, num_occurrences, classes, file_paths) for each unique
+    component (tag + classes). 
+
     Only include tags with at least min_classes (default=1) classes that occur at least min_instances (default=2) times.  
     """
     cursor = conn.cursor()
     cursor.execute(f'''
-        SELECT name, COUNT(id) as num_instances, classes, GROUP_CONCAT(file_path, ', ') as file_paths
+        SELECT name, COUNT(id) as num_instances, classes, GROUP_CONCAT(DISTINCT file_path) as file_paths
         FROM tag_data
         WHERE num_classes >= {min_classes}
         GROUP BY name, classes
@@ -99,7 +99,15 @@ def analyze_db_info(conn: Connection, min_classes=1, min_instances=2) -> None:
         ORDER BY num_instances DESC
     ''')
     query_data = cursor.fetchall()
-    with open("table.csv", "w", newline="", encoding="utf-8") as f:
+
+    if "." not in csv_path:
+        csv_path += ".csv"
+
+    if not os.path.isdir(csv_path):
+        csv_path = Path(csv_path)
+        csv_path.parent.mkdir(exist_ok=True, parents=True)
+
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow([header[0] for header in cursor.description])
         writer.writerows(query_data)
@@ -108,12 +116,33 @@ if __name__ == "__main__":
 
     #parse command line arguments
     args = sys.argv
-    if len(args) != 2:
+    if (len(args) == 1):
         print("Error: please provide a file path or directory to analyze as a command-line argument.")
         sys.exit(1)
-    path = args[1]
+
+    analysis_dir = None
+    output_file = None
+    i = 1
+    while i < len(args):
+        arg = args[i]
+        if arg in ["-o", "--output"]:
+            if i + 1 >= len(args):
+                print(f"Error: {arg} requires an output file or directory")
+                sys.exit(1)
+            output_file = args[i+1]
+            i += 1
+        elif analysis_dir is None:
+            analysis_dir = arg
+        else:
+            print(f"Error: too many arguments")
+            sys.exit(1)
+        i += 1
     
-    file_paths = get_filepaths(path)
+    if analysis_dir is None:
+        print("Error: no target file or directory specified")
+        sys.exit(1)
+            
+    file_paths = get_filepaths(analysis_dir)
 
     data = []
     for file_path in file_paths:
@@ -137,8 +166,13 @@ if __name__ == "__main__":
     parse_data(data, conn)
 
     # analyze data in db and write to csv 
-    analyze_db_info(conn)
+    if output_file:
+        analyze_db_info(conn, output_file)
+    else:
+        analyze_db_info(conn)
+        
 
     # Clean up
     conn.cursor().execute("DROP TABLE tag_data")
     conn.close()
+    os.remove("database.db")

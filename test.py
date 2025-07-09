@@ -1,6 +1,7 @@
 import pytest
 import sqlite3
 import csv
+import os
 from pytest import raises
 from main import get_filepaths, parse_html, parse_data, analyze_db_info
 
@@ -106,47 +107,105 @@ def test_parse_data_populates_table_correctly() -> None:
 #  ------------ Tests for analyze_db_info -------------
 # NOTE: tests rely on parse_data working correctly
 
-# def test_analyze_db_info_creates_correct_csv_with_empty_data() -> None:
-#     data=[]
-#     conn = sqlite3.connect(":memory:")
-#     parse_data(data, conn)
-#     analyze_db_info(conn)
-#     conn.close()
+def test_analyze_db_info_creates_correct_csv_with_empty_data() -> None:
+    data=[]
+    conn = sqlite3.connect(":memory:")
+    parse_data(data, conn)
+    analyze_db_info(conn)
+    conn.close()
 
-#     with open("table.csv", "r") as f:
-#         content = f.read().strip()
+    with open("template_analysis.csv", "r") as f:
+        content = f.read().strip()
     
-#     assert content == "name,num_instances,classes,file_paths"
+    assert content == "name,num_instances,classes,file_paths"
+    os.remove("template_analysis.csv")
 
-# def test_analyze_db_info_creates_correct_csv() -> None:
-#     data = [
-#         ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/fake_path.html"),
-#         ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/diff_path.html"),
-#         ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/diff_path.html"),
-#         ("div", "flex", 2, "_table.html"),
-#         ("div", "flex", 2, "_table.html"),
-#     ]
-#     conn = sqlite3.connect(":memory:")
-#     parse_data(data, conn)
-#     analyze_db_info(conn)
-#     conn.close()
+def test_analyze_db_info_creates_correct_csv() -> None:
+    data = [
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/fake_path.html"),
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/diff_path.html"),
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/diff_path.html"),
+        ("div", "flex", 1, "_table.html"),
+        ("div", "flex", 1, "_table.html"),
+    ]
+    conn = sqlite3.connect(":memory:")
+    parse_data(data, conn)
+    analyze_db_info(conn)
+    conn.close()
 
-#     with open("table.csv", "r", newline='') as file:
-#         reader = csv.reader(file)
-#         headers = next(reader)
-#         first = next(reader)        
-#         second = next(reader)
+    with open("template_analysis.csv", "r", newline='') as file:
+        reader = csv.reader(file)
+        headers = next(reader)
+        first = next(reader)        
+        second = next(reader)
     
-#     expected_first_no_paths = ["div", "3", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto"]
-#     assert first[:3] == expected_first_no_paths
-#     expected_second_no_paths = ["div", "2", "flex"]
-#     assert second[:3] == expected_second_no_paths
+    expected_first_no_paths = ["div", "3", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto"]
+    assert first[:3] == expected_first_no_paths
+    expected_second_no_paths = ["div", "2", "flex"]
+    assert second[:3] == expected_second_no_paths
 
-#     expected_first_paths = {"test_data/fake_path.html", "test_data/diff_path.html"}
-#     first_paths = first[3].split(",")
-#     assert len(first_paths) == 2
-#     assert set(first_paths) == expected_first_paths
+    expected_first_paths = {"test_data/fake_path.html", "test_data/diff_path.html"}
+    first_paths = first[3].split(",")
+    assert len(first_paths) == 2
+    assert set(first_paths) == expected_first_paths
+
+    second_paths = second[3]    
+    assert second_paths == "_table.html"
+    os.remove("template_analysis.csv")
+
+
+def test_analyze_db_info_sorts_and_filters_correctly() -> None:
+    data = [
+        ("div", "flex", 1, "_table.html"),
+        ("div", "", 0, "demo.html"), #exclude 0 classes
+        ("div", "", 0, "demo.html"),
+        ("div", "", 0, "demo.html"),
+        ("div", "flex", 1, "_table.html"),
+        ("div", "flex flex-col", 2, "_table.html"),
+        ("div", "flex flex-col", 2, "_table.html"),
+        ("div", "flex flex-col", 2, "index.html"),
+        ("div", "flex flex-col", 2, "detail.html"),
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/fake_path.html"),
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/diff_path.html"),
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto", 6, "test_data/diff_path.html"),
+        ("div", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto min-w-8", 7, "test_data/diff_path.html"), #exclude single occurrences
+    ]
+    conn = sqlite3.connect(":memory:")
+    parse_data(data, conn)
+    analyze_db_info(conn)
+    conn.close()
+
+    with open("template_analysis.csv", "r", newline='') as file:
+        reader = csv.reader(file)
+        headers = next(reader)
+        
+        table_data = []
+        for row in reader:
+            no_paths = row[:3]
+            paths = row[3]
+            paths_set = set(paths.split(","))
+            table_data.append((no_paths, paths_set))
     
-#     assert second[3] == "_table.html"
+    expected_data = [
+        (["div", "4", "flex flex-col"], {"_table.html", "index.html", "detail.html"}),
+        (["div", "3", "flex flex-col gap-y-5 max-w-5xl mt-5 mx-auto"], {"test_data/fake_path.html", "test_data/diff_path.html"}),
+        (["div", "2", "flex"], {"_table.html"})
+    ]
 
+    assert table_data == expected_data
+    os.remove("template_analysis.csv")
+
+
+def test_analyze_db_info_creates_new_directories() -> None:
+    data = []
+    csv_path = "analysis/subdir/templates.csv"
+    conn = sqlite3.connect(":memory:")
+    parse_data(data, conn)
+    analyze_db_info(conn, csv_path=csv_path)
+    conn.close()
+
+    assert os.path.exists(csv_path)
+    os.remove(csv_path)
+    os.rmdir("analysis/subdir")
+    os.rmdir("analysis")
 
