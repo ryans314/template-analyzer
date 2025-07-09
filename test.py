@@ -12,27 +12,30 @@ def test_parse_args_works_for_minimal_args() -> None:
     expected_output = "template_analysis.csv"
     expected_classes = 1
     expected_occurrences = 2
-    assert [expected_analysis, expected_output, expected_classes, expected_occurrences] == parse_args(args)
+    expected_is_short = False
+    assert [expected_analysis, expected_output, expected_classes, expected_occurrences, expected_is_short] == parse_args(args)
 
 def test_parse_args_works_for_all_args() -> None:
-    args = ["analyze.py", "directory/templates", "-o", "output.csv", "-mo", "18", "-mc", "0"]
+    args = ["analyze.py", "directory/templates", "-o", "output.csv", "-mo", "18", "-mc", "0", "-s"]
     expected_analysis = "directory/templates"
     expected_output = "output.csv"
     expected_classes = 0
     expected_occurrences = 18
-    assert [expected_analysis, expected_output, expected_classes, expected_occurrences] == parse_args(args)
+    expected_is_short = True
+    assert [expected_analysis, expected_output, expected_classes, expected_occurrences, expected_is_short] == parse_args(args)
 
 def test_parse_args_works_for_verbose_options() -> None:
-    args = ["analyze.py", "directory/templates/template.html", "--output", "output.csv", "--min-occurrences", "18", "--min-classes", "0"]
+    args = ["analyze.py", "directory/templates/template.html", "--output", "output.csv", "--min-occurrences", "18", "--min-classes", "0", "--short"]
     expected_analysis = "directory/templates/template.html"
     expected_output = "output.csv"
     expected_classes = 0
+    expected_is_short = True
     expected_occurrences = 18
-    assert [expected_analysis, expected_output, expected_classes, expected_occurrences] == parse_args(args)
+    assert [expected_analysis, expected_output, expected_classes, expected_occurrences, expected_is_short] == parse_args(args)
 
 
 
-#  ------------ Tests for get_filepath -------------
+#  ------------ Tests for get_filepaths -------------
 def test_get_filepaths_works_for_dir() -> None:
     result = get_filepaths("test_data")
     assert len(result) == 4

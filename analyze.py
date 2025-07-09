@@ -9,17 +9,17 @@ from typing import List, Tuple, Any
 
 type TagEntry = tuple[str, str, int, str]
 
-def get_filepaths(path: str) -> List[str]:
+def get_filepaths(path: str) -> List[Tuple[str, str]]:
     """
     path: a path to a file or directory
 
-    returns: a list of filepaths to all .html files in the directory,
+    returns: a list of (filepath, filename) to all .html files in the directory,
              or a list of a single filepath if path is to a file.
              If the path is invalid, raise an error
     """
 
     if (os.path.isfile(path)):
-        return [path]
+        return [(path, path)]
     elif (os.path.isdir(path)):
         directories = os.walk(path)
         filepaths = []
@@ -27,7 +27,7 @@ def get_filepaths(path: str) -> List[str]:
             for filename in filenames:
                 if filename.endswith(".html"):
                     filepath = os.path.join(dirpath,filename)
-                    filepaths.append(filepath)
+                    filepaths.append((filepath, filename))
         if (not filepaths):
             print("no .html files to analyze in the given directory.")
             sys.exit(0)
@@ -121,13 +121,16 @@ def parse_args(args: List) -> List:
     output_file = "template_analysis.csv"
     min_classes = 1
     min_occurrences = 2
+    is_short = False
 
     i = 1
     while i < len(args):
         arg = args[i]
-        if arg.startswith("-") and i + 1  >= len(args):
+        if arg in ["-s", "--short"]:
+            is_short = True
+        elif arg.startswith("-") and i + 1  >= len(args):
             raise ValueError(f"Error: {arg} requires an additional argument")
-        if arg in ["-o", "--output"]:
+        elif arg in ["-o", "--output"]:
             output_file = args[i+1]
             i += 1
         elif arg in ["-mc", "--min-classes"]:
@@ -153,14 +156,14 @@ def parse_args(args: List) -> List:
     if analysis_dir is None:
         raise ValueError("Error: no target file or directory specified")
     
-    return [analysis_dir, output_file, min_classes, min_occurrences]
+    return [analysis_dir, output_file, min_classes, min_occurrences, is_short]
 
 
 if __name__ == "__main__":
 
     #parse command line arguments
     try:
-        analysis_dir, output_file, min_classes, min_occurrences = parse_args(sys.argv)
+        analysis_dir, output_file, min_classes, min_occurrences, is_short = parse_args(sys.argv)
     except ValueError as e:
         print(e)
         sys.exit(1)
@@ -172,7 +175,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     data = []
-    for file_path in file_paths:
+    for file_path, file_name in file_paths:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
@@ -185,8 +188,10 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Unexpected error: {e}")
             sys.exit(1)
-
-        data += parse_html(content, file_path)
+        if is_short:
+            data += parse_html(content, file_name)
+        else:
+            data += parse_html(content, file_path)
 
     # Set up sqlite3 db and add data
     conn = sqlite3.connect("database.db")
