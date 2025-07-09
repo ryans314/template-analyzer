@@ -9,7 +9,7 @@ from typing import List, Tuple, Any
 
 type TagEntry = tuple[str, str, int, str]
 
-def get_filepaths(path: str) -> List[Tuple[str, str]]:
+def get_filepaths(path: str) -> List[str]:
     """
     path: a path to a file or directory
 
@@ -19,7 +19,8 @@ def get_filepaths(path: str) -> List[Tuple[str, str]]:
     """
 
     if (os.path.isfile(path)):
-        return [(path, path)]
+        
+        return [path]
     elif (os.path.isdir(path)):
         directories = os.walk(path)
         filepaths = []
@@ -27,7 +28,7 @@ def get_filepaths(path: str) -> List[Tuple[str, str]]:
             for filename in filenames:
                 if filename.endswith(".html"):
                     filepath = os.path.join(dirpath,filename)
-                    filepaths.append((filepath, filename))
+                    filepaths.append(filepath)
         if (not filepaths):
             print("no .html files to analyze in the given directory.")
             sys.exit(0)
@@ -175,7 +176,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     data = []
-    for file_path, file_name in file_paths:
+    for file_path in file_paths:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
@@ -189,7 +190,7 @@ if __name__ == "__main__":
             print(f"Unexpected error: {e}")
             sys.exit(1)
         if is_short:
-            data += parse_html(content, file_name)
+            data += parse_html(content, os.path.basename(file_path))
         else:
             data += parse_html(content, file_path)
 
