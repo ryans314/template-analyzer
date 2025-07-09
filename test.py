@@ -3,7 +3,7 @@ import sqlite3
 import csv
 import os
 from pytest import raises
-from main import get_filepaths, parse_html, parse_data, analyze_db_info
+from analyze import get_filepaths, parse_html, parse_data, analyze_db_info
 
 #  ------------ Tests for get_filepath -------------
 def test_get_filepaths_works_for_dir() -> None:
